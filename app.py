@@ -7,7 +7,12 @@ st.title("Herramienta de aplanamiento")
 st.write("Convierte imagenes de tablas en muestras de CSV aplanadas.")
 
 
-table_image = st.file_uploader("Cargar imagen de tabla", type=["jpg", "jpeg", "png"])
+def clear_state():
+    for key in ['schema', 'csv_sample', 'generating', 'generating_csv']:
+        if key in st.session_state:
+            del st.session_state[key]
+
+table_image = st.file_uploader("Cargar imagen de tabla", type=["jpg", "jpeg", "png"], on_change=clear_state)
 
 if table_image is not None:
     st.image(table_image, caption="Imagen de tabla cargada")
