@@ -46,7 +46,7 @@ years
 scenarios
 
 STEP 4 — Determine Hierarchy Depth
-Combine the row hierarchy levels and the column dimension to form the final structure.
+Combine the row hierarchy levels and the column dimension to form the final structure. Row dimensions come first followed by the column dimensions. 
 
 STEP 5 — Extract Members
 For each level (nvX), return the list of possible members found in the table.
