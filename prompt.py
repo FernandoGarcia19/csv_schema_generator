@@ -1,70 +1,81 @@
-JSON_SCHEMA_PROMPT = """
-You are analyzing a table extracted from a report (financial, statistical, operational, etc.).
-Your task is to infer the categorical dimensional structure required to convert the table into a flattened long dataset.
-The final dataset will always contain:
-fecha
-valor
-Your job is ONLY to detect the categorical dimensions that define each numeric value.
+JSON_SCHEMA_PROMPT_CATEGORY_1 = """
+You are an expert data extraction agent. We are extracting flattened CSV schemas from report tables categorized as 'Simple Tables (No Indentation)'.
 
-OBJECTIVE
-Identify the categorical structure of the table and represent it as generic hierarchy levels:
-nv1, nv2, nv3 ... nvN
-These levels come from two sources:
-1 Row dimensions (hierarchical)
-2 Column dimensions (usually a single level)
+RULES FOR SIMPLE TABLES:
 
-STEP 1 — Identify Numeric Cells
-Locate the cells containing numeric values.
-These represent the FACT ("valor").
-Numeric cells must NOT appear in the dimension member lists.
+Scan the table from left to right.
 
-STEP 2 — Identify Row Dimension (Hierarchical)
-The left side of the table usually contains the main categorical hierarchy.
-This dimension often represents things like:
-accounts
-product categories
-economic sectors
-geographic breakdowns
-statistical classifications
-This row dimension may contain multiple hierarchical levels.
+Ignore any columns representing dates (e.g., 'fecha', 'periodo') or fact dimensions/values (e.g., 'valor', 'saldo', numerical amounts).
 
-Rules:
-• Use indentation, alignment, and grouping to detect hierarchy.
-• Parent rows represent higher nv levels.
-• Child rows represent deeper nv levels.
+Assign each remaining categorical column a sequential level starting from nv1, nv2, nv3, etc.
 
-Constraint: A categorical level (nvX) must represent a variable. 
-If a name or entity applies to every single numeric value in the table (e.g., the name of the company at the top of a report), 
-it is Metadata, not a Dimension. Do not include constant Metadata as an nv level.
+Extract all the unique string values present in each identified column and return a strict JSON object mapping each level to its array of unique values.
 
-STEP 3 — Identify Column Dimension
-Column headers often represent entities measured across the same categories, such as:
-institutions
-companies
-regions
-years
-scenarios
+Your output MUST be a JSON object with the following structure:
+{
+"nv1":[....], "nv2":[....], "nv3":[....], ... "nvN":[....]
+}
+Your output will be fed to another sprompt to generate the final CSV sample with nv1,nv2,...nvN, fecha,valor.
+"""
 
-STEP 4 — Determine Hierarchy Depth
-Combine the row hierarchy levels and the column dimension to form the final structure. Row dimensions come first followed by the column dimensions. 
+JSON_SCHEMA_PROMPT_CATEGORY_2 = """
+Identify Row Hierarchy: Scan the leftmost columns to detect hierarchical groupings in the rows. This hierarchy is typically indicated by visual indentation, numbering schemes (e.g., 1, 1.1, 1.1.1), font weighting (bolding), or merged vertical cells.
 
-STEP 5 — Extract Members
-For each level (nvX), return the list of possible members found in the table.
-Rules:
-• Members must be unique
-• Maximum 10 elements per level
-• Ignore empty cells
-• Ignore numeric values
-• Ignore formatting artifacts
+Assign Sequential Levels: Map the highest/broadest row category to nv1. Map the first nested sub-category to nv2, the next to nv3, and so on, continuing until you reach the deepest level of row indentation.
 
-OUTPUT FORMAT
-Return ONLY a JSON object.
-Keys must be sequential:
-nv1
-nv2
-nv3
-...
-nvN
+Process Remaining Columns: After fully mapping the nested rows, assign any remaining standalone categorical column headers to the subsequent nv levels.
+
+Exclude Facts & Dates: Strictly ignore any cells or columns representing dates (e.g., 'fecha', 'periodo') or fact dimensions/values (e.g., 'valor', 'saldo', 'total', numerical amounts).
+
+Output Format: Extract all the unique string values present in each identified hierarchical level. Return a strict JSON object mapping each sequential level (nv1, nv2, etc.)
+Your output MUST be a JSON object with the following structure:
+{
+"nv1":[....], "nv2":[....], "nv3":[....], ... "nvN":[....]
+}
+Your output will be fed to another prompt to generate the final CSV sample with nv1,nv2,...nvN, fecha,valor.
+
+"""
+
+JSON_SCHEMA_PROMPT_CATEGORY_3 = """
+You are an expert data extraction agent. We are extracting flattened CSV schemas from report tables categorized as 'Composed Columns'.
+
+RULES FOR COMPOSED COLUMNS:
+
+Identify Multi-Level Headers: Scan the top rows of the table to detect horizontal hierarchical groupings. Look for overarching primary headers that visually span across or group multiple sub-columns below them (e.g., a master header like 'DEPÓSITOS' sitting above sub-headers like 'MN' and 'ME').
+
+Map the Leftmost Row Categories: First, identify the primary row categories in the leftmost column(s) (e.g., 'año', 'departamento') and assign them to the initial level(s), such as nv1.
+
+Map the Horizontal Hierarchy (Top-Down): Next, assign the highest/broadest column header (the "super-header") to the next sequential level (e.g., nv2). Assign the nested sub-headers below it to subsequent levels (e.g., nv3, nv4, etc.), continuing downwards until you reach the final header row immediately above the numerical data grid.
+
+Exclude Facts: Strictly ignore the numerical data points, values, or amounts located in the main body/grid of the table. Your goal is only to extract the categorical structure.
+
+Output Format: Extract all the unique string values present in each identified hierarchical level. Return a strict JSON object mapping each sequential level (nv1, nv2, nv3, etc.) to its array of unique string values. Return ONLY the raw JSON object. Do not use markdown wrappers like ```json.
+Your output MUST be a JSON object with the following structure:
+{
+"nv1":[....], "nv2":[....], "nv3":[....], ... "nvN":[....]
+}
+Your output will be fed to another prompt to generate the final CSV sample with nv1,nv2,...nvN, fecha,valor.
+"""
+
+JSON_SCHEMA_PROMPT_CATEGORY_4 = """
+You are an expert data extraction agent. We are extracting flattened CSV schemas from report tables categorized as 'Mixed Tables (Composed Rows and Columns)'.
+
+RULES FOR MIXED TABLES:
+
+Identify Dual Hierarchies: Analyze the table to detect both vertical (row) groupings on the left and horizontal (column) groupings at the top.
+
+Map the Row Hierarchy (Vertical): Scan the leftmost columns first. Identify overarching thematic blocks or parent rows (e.g., 'Disponibilidades', 'Inversiones') and assign them to nv1. Identify any indented or grouped sub-rows within those blocks and assign them to subsequent levels (e.g., nv2). Continue until the deepest row hierarchy is mapped.
+
+Map the Column Hierarchy (Horizontal): Once the row levels are fully assigned, analyze the top header rows. Identify the highest-level overarching column headers (super-headers) and assign them to the next available sequential level (e.g., nv3). Map the nested sub-headers below them to the subsequent level (e.g., nv4), continuing top-down through the header rows.
+
+Exclude Facts: Strictly ignore all numerical data points, values, or amounts located inside the main body/grid of the table. Your goal is only to extract the categorical structure from the headers and row stubs.
+
+Output Format: Extract all the unique string values present in each identified hierarchical level. Return a strict JSON object mapping each sequential level (nv1, nv2, nv3, nv4, etc.) to its array of unique string values. Return ONLY the raw JSON object. Do not use markdown wrappers like ```json.
+Your output MUST be a JSON object with the following structure:
+{
+"nv1":[....], "nv2":[....], "nv3":[....], ... "nvN":[....]
+}
+Your output will be fed to another prompt to generate the final CSV sample with nv1,nv2,...nvN, fecha,valor.
 """
 
 CSV_GENERATOR_PROMPT = """

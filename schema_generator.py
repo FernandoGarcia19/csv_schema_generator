@@ -3,7 +3,7 @@ import re
 import os
 from google import genai
 from google.genai import types as genai_types
-from prompt import JSON_SCHEMA_PROMPT, CSV_GENERATOR_PROMPT
+from prompt import CSV_GENERATOR_PROMPT
 import json
 
 DATA_URL_PATTERN = re.compile(r"^data:(?P<mime>[^;]+);base64,(?P<data>.+)$", re.IGNORECASE | re.DOTALL)
@@ -40,13 +40,13 @@ def _normalize_image_input(image_input: bytes | str) -> tuple[bytes, str]:
     image_bytes = base64.b64decode(candidate)
     return image_bytes, _guess_mime_type(image_bytes)
 
-def generate_json_schema(image_input: bytes | str) -> dict:
+def generate_json_schema(image_input: bytes | str, system_prompt: str) -> dict:
     image_bytes, mime_type = _normalize_image_input(image_input)
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     response = client.models.generate_content(
         model=os.getenv("GEMINI_MODEL"),
         config=genai_types.GenerateContentConfig(
-            system_instruction=JSON_SCHEMA_PROMPT,
+            system_instruction=system_prompt,
         ),
         contents=[
             genai_types.Part.from_text(
