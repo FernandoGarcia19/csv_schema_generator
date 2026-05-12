@@ -76,6 +76,7 @@ Fact Extraction: The valor column must contain the numerical data. Represent emp
 Output Requirements:
 Generate a CSV code block.
 Header format: nv1,nv2,nv3,...,nvN,fecha,valor
+Quote any field that contains commas, line breaks, or double quotes so the CSV remains parseable.
 For the Fecha Valor, in the case that date is specified in rows or columns (i. e. composed columns with "2023" and "2024" deglossed into Enero, Febrero, Marzo, etc.) but the exact day is missing, fill the date as the last day of the corresonding month.
 For example: If a compossed column has "2023" and "enero", the fecha should be "2023-01-31".
 Ensure the hierarchy follows the visual "indentation" or "bolding" cues from the image and the structure identified in the JSON. ONLY return the CSV sample.

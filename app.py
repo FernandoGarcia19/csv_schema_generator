@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 from schema_generator import generate_json_schema, generate_csv_sample
+from pandas.errors import ParserError
+import re
 
 st.title("Herramienta de aplanamiento")
 st.write("Convierte imagenes de tablas en muestras de CSV aplanadas.")
@@ -11,6 +13,14 @@ def clear_state():
     for key in ['schema', 'csv_sample', 'generating', 'generating_csv']:
         if key in st.session_state:
             del st.session_state[key]
+
+
+def extract_csv_text(raw_text: str) -> str:
+    text = raw_text.strip()
+    fence_match = re.search(r"```(?:csv)?\s*(.*?)\s*```", text, flags=re.IGNORECASE | re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1).strip()
+    return text
 
 table_image = st.file_uploader("Cargar imagen de tabla", type=["jpg", "jpeg", "png"], on_change=clear_state)
 
@@ -93,5 +103,15 @@ if 'schema' in st.session_state:
         
     if 'csv_sample' in st.session_state:
         st.subheader("Muestra de CSV generada")
-        csv_df = pd.read_csv(pd.io.common.StringIO(st.session_state.csv_sample))
-        st.dataframe(csv_df, use_container_width=True)
+        csv_text = extract_csv_text(st.session_state.csv_sample)
+
+        try:
+            csv_df = pd.read_csv(
+                pd.io.common.StringIO(csv_text),
+                engine="python",
+                on_bad_lines="warn",
+            )
+            st.dataframe(csv_df, use_container_width=True)
+        except (ParserError, ValueError):
+            st.warning("No se pudo interpretar la muestra como CSV válido. Se muestra el texto original.")
+            st.code(csv_text, language="csv")
