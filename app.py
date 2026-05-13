@@ -74,7 +74,7 @@ if 'schema' in st.session_state:
                 label_visibility="collapsed"
             )
             
-            updated_values = [v.strip() for v in updated_text.split('') if v.strip()]
+            updated_values = [v.strip() for v in updated_text.split('\n') if v.strip()]
             
             if updated_values != values:
                 st.session_state.schema[level] = updated_values
