@@ -65,7 +65,7 @@ if 'schema' in st.session_state:
                 if st.button("❌", key=f"del_{level}"):
                     level_to_delete = level
 
-            text_content = "".join(values)
+            text_content = "\n".join(values)
             updated_text = st.text_area(
                 "Extracted Values (one per line):", 
                 value=text_content, 
